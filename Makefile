@@ -17,11 +17,11 @@ test-cluster: $(KUBECONFIG) bin_$(GOOS)_$(GOARCH)/kubeapply
 # packages, so disable go.mk's built-in go-test, and define our own.
 go.DISABLE_GO_TEST = y
 go-test-nat: go-get
-	$(FLOCK) firewall.lock go test -v -exec sudo $(go.module)/internal/pkg/nat
+	$(FLOCK) firewall.lock go test -v -exec sudo $(go.module)/lib/nat
 go-test-teleproxy: go-get test-cluster
 	$(FLOCK) firewall.lock $(FLOCK) cluster.lock go test -v -exec "sudo env PATH=${PATH} KUBECONFIG=$(abspath ${KUBECONFIG})" $(go.module)/cmd/teleproxy
 go-test-other: go-get test-cluster
-	KUBECONFIG=$(abspath ${KUBECONFIG}) $(FLOCK) cluster.lock go test -v $$(go list ./... | grep -vF -e $(go.module)/internal/pkg/nat -e $(go.module)/cmd/teleproxy)
+	KUBECONFIG=$(abspath ${KUBECONFIG}) $(FLOCK) cluster.lock go test -v $$(go list ./... | grep -vF -e $(go.module)/lib/nat -e $(go.module)/cmd/teleproxy)
 .PHONY: go-test-nat go-test-teleproxy go-test-other
 go-test: go-test-nat go-test-teleproxy go-test-other
 

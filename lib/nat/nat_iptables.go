@@ -8,7 +8,7 @@ import (
 	"net"
 	"syscall"
 
-	"github.com/datawire/teleproxy/pkg/tpu"
+	"github.com/datawire/teleproxy/lib/tpu"
 )
 
 type Translator struct {

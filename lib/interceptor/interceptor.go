@@ -2,8 +2,8 @@ package interceptor
 
 import (
 	"encoding/json"
-	"github.com/datawire/teleproxy/internal/pkg/nat"
-	rt "github.com/datawire/teleproxy/internal/pkg/route"
+	"github.com/datawire/teleproxy/lib/nat"
+	rt "github.com/datawire/teleproxy/lib/route"
 	"log"
 	"net"
 	"strings"

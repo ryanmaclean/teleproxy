@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/datawire/teleproxy/pkg/k8s"
-	"github.com/datawire/teleproxy/pkg/tpu"
+	"github.com/datawire/teleproxy/lib/k8s"
+	"github.com/datawire/teleproxy/lib/tpu"
 	"github.com/spf13/cobra"
 )
 
