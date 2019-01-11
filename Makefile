@@ -10,7 +10,7 @@ include build-aux/help.mk
 export PATH:=$(CURDIR)/bin_$(GOOS)_$(GOARCH):$(PATH)
 
 test-cluster: $(KUBECONFIG) bin_$(GOOS)_$(GOARCH)/kubeapply
-	bin_$(GOOS)_$(GOARCH)/kubeapply -f k8s
+	bin_$(GOOS)_$(GOARCH)/kubeapply -f testdata
 .PHONY: test-cluster
 
 # We need to pass special `-exec …` flags to to `go test` for certain
