@@ -225,7 +225,7 @@ var (
 
 func kubewatch(cmd *cobra.Command, args []string) {
 	s := Syncer{
-		Watcher:     k8s.NewClient(nil).Watcher(),
+		Watcher:     k8s.NewWatcher(k8s.NewClient(nil)),
 		SyncCommand: SYNC_COMMAND,
 		Kinds:       args,
 		MinInterval: MIN_INTERVAL,

@@ -16,7 +16,7 @@ type Waiter struct {
 
 func NewWaiter(watcher *Watcher) (w *Waiter) {
 	if watcher == nil {
-		watcher = NewClient(nil).Watcher()
+		watcher = NewWatcher(NewClient(nil))
 	}
 	return &Waiter{
 		watcher: watcher,

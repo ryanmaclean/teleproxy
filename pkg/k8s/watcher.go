@@ -51,7 +51,7 @@ type watch struct {
 }
 
 // NewWatcher returns a Kubernetes Watcher for the specified cluster
-func (c *Client) Watcher() *Watcher {
+func NewWatcher(c *Client) *Watcher {
 	w := &Watcher{
 		client:  c,
 		watches: make(map[string]watch),

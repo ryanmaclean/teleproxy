@@ -253,7 +253,7 @@ func bridges(kubeinfo *k8s.KubeInfo) func() {
 
 	// setup kubernetes bridge
 	log.Printf("BRG: kubernetes ctx=%s ns=%s", kubeinfo.Context, kubeinfo.Namespace)
-	w := k8s.NewClient(kubeinfo).Watcher()
+	w := k8s.NewWatcher(k8s.NewClient(kubeinfo))
 	w.Watch("services", func(w *k8s.Watcher) {
 		table := route.Table{Name: "kubernetes"}
 		for _, svc := range w.List("services") {
