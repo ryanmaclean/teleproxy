@@ -71,7 +71,7 @@ func (c *Client) Watcher() *Watcher {
 	return w
 }
 
-func (w *Watcher) Canonical(name string) string {
+func (client *Client) Canonicalize(name string) string {
 	parts := strings.Split(name, "/")
 
 	var kind string
@@ -86,7 +86,7 @@ func (w *Watcher) Canonical(name string) string {
 		return ""
 	}
 
-	ri := w.client.resolve(kind)
+	ri := client.resolve(kind)
 	kind = strings.ToLower(ri.Kind)
 
 	if name == "" {
@@ -177,7 +177,7 @@ func (w *Watcher) WatchNamespace(namespace, resources string, listener func(*Wat
 		close(stoppedChan)
 	}
 
-	kind := w.Canonical(ri.Kind)
+	kind := w.client.Canonicalize(ri.Kind)
 	w.watches[kind] = watch{
 		namespace: namespace,
 		resource:  resource,
@@ -228,7 +228,7 @@ func (w *Watcher) sync(kind string) {
 }
 
 func (w *Watcher) List(kind string) []Resource {
-	kind = w.Canonical(kind)
+	kind = w.client.Canonicalize(kind)
 	watch, ok := w.watches[kind]
 	if ok {
 		objs := watch.store.List()
@@ -243,7 +243,7 @@ func (w *Watcher) List(kind string) []Resource {
 }
 
 func (w *Watcher) UpdateStatus(resource Resource) (Resource, error) {
-	kind := w.Canonical(resource.Kind())
+	kind := w.client.Canonicalize(resource.Kind())
 	if kind == "" {
 		return nil, fmt.Errorf("unknow resource: %v", resource.Kind())
 	}

@@ -25,7 +25,7 @@ func NewWaiter(watcher *Watcher) (w *Waiter) {
 }
 
 func (w *Waiter) Add(resource string) error {
-	cresource := w.watcher.Canonical(resource)
+	cresource := w.watcher.client.Canonicalize(resource)
 
 	parts := strings.Split(cresource, "/")
 	if len(parts) != 2 {
@@ -104,7 +104,7 @@ func (w *Waiter) Wait(timeout time.Duration) bool {
 					if ok {
 						name = fmt.Sprintf("%s/%v.%v", obj["kind"], obj["name"],
 							obj["namespace"])
-						name = watcher.Canonical(name)
+						name = watcher.client.Canonicalize(name)
 					} else {
 						name = r.QName()
 					}
@@ -123,10 +123,10 @@ func (w *Waiter) Wait(timeout time.Duration) bool {
 				r := watcher.Get(kind, name)
 				if r.Ready() {
 					if r.ReadyImplemented() {
-						fmt.Printf("ready: %s/%s\n", watcher.Canonical(r.Kind()), r.QName())
+						fmt.Printf("ready: %s/%s\n", watcher.client.Canonicalize(r.Kind()), r.QName())
 					} else {
 						fmt.Printf("ready: %s/%s (UNIMPLEMENTED)\n",
-							watcher.Canonical(r.Kind()), r.QName())
+							watcher.client.Canonicalize(r.Kind()), r.QName())
 					}
 					w.remove(kind, name)
 				}
