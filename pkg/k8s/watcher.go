@@ -229,15 +229,13 @@ func (w *Watcher) Exists(kind, qname string) bool {
 }
 
 func (w *Watcher) Stop() {
-	go func() {
-		w.stopMutex.Lock()
-		defer w.stopMutex.Unlock()
-
-		for _, c := range w.stopChans {
-			close(c)
-		}
-		w.stopChans = nil
-	}()
+	w.stopMutex.Lock()
+	for _, c := range w.stopChans {
+		close(c)
+	}
+	w.stopChans = nil
+	w.stopMutex.Unlock()
+	w.wg.Wait()
 }
 
 func (w *Watcher) Wait() {
