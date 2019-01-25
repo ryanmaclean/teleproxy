@@ -33,13 +33,14 @@ func (lw listWatchAdapter) Watch(options v1.ListOptions) (pwatch.Interface, erro
 }
 
 type Watcher struct {
-	client       *Client
-	watches      map[string]watch
-	mutex        sync.Mutex
-	started      bool
-	stop         chan empty
-	stopChans    []chan struct{}
-	stoppedChans []chan empty
+	client  *Client
+	watches map[string]watch
+	mutex   sync.Mutex
+	started bool
+
+	stopMutex sync.Mutex // governs access to "stopChans"
+	stopChans []chan struct{}
+	wg        sync.WaitGroup
 }
 
 type watch struct {
@@ -55,18 +56,7 @@ func NewWatcher(c *Client) *Watcher {
 	w := &Watcher{
 		client:  c,
 		watches: make(map[string]watch),
-		stop:    make(chan empty),
 	}
-
-	go func() {
-		<-w.stop
-		for _, c := range w.stopChans {
-			close(c)
-		}
-		for {
-			<-w.stop
-		}
-	}()
 
 	return w
 }
@@ -126,13 +116,13 @@ func (w *Watcher) WatchNamespace(namespace, resources string, listener func(*Wat
 	)
 
 	stopChan := make(chan struct{})
-	stoppedChan := make(chan empty)
-	w.stoppedChans = append(w.stoppedChans, stoppedChan)
+	w.stopMutex.Lock()
 	w.stopChans = append(w.stopChans, stopChan)
+	w.stopMutex.Unlock()
 
 	runner := func() {
 		controller.Run(stopChan)
-		close(stoppedChan)
+		w.wg.Done()
 	}
 
 	kind := w.client.Canonicalize(ri.Kind)
@@ -164,6 +154,7 @@ func (w *Watcher) Start() {
 		watch.invoke()
 	}
 
+	w.wg.Add(len(w.watches))
 	for _, watch := range w.watches {
 		go watch.runner()
 	}
@@ -238,12 +229,18 @@ func (w *Watcher) Exists(kind, qname string) bool {
 }
 
 func (w *Watcher) Stop() {
-	w.stop <- empty{}
+	go func() {
+		w.stopMutex.Lock()
+		defer w.stopMutex.Unlock()
+
+		for _, c := range w.stopChans {
+			close(c)
+		}
+		w.stopChans = nil
+	}()
 }
 
 func (w *Watcher) Wait() {
 	w.Start()
-	for _, c := range w.stoppedChans {
-		<-c
-	}
+	w.wg.Wait()
 }
