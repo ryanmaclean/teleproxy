@@ -141,6 +141,48 @@ type ResourceInfo struct {
 	Namespaced bool
 }
 
+func (client *Client) Canonicalize(name string) string {
+	parts := strings.Split(name, "/")
+
+	var kind string
+	switch len(parts) {
+	case 1:
+		kind = parts[0]
+		name = ""
+	case 2:
+		kind = parts[0]
+		name = parts[1]
+	default:
+		return ""
+	}
+
+	ri := client.resolve(kind)
+	kind = strings.ToLower(ri.Kind)
+
+	if name == "" {
+		return kind
+	}
+
+	if ri.Namespaced {
+		var namespace string
+
+		parts = strings.Split(name, ".")
+		switch len(parts) {
+		case 1:
+			namespace = "default"
+		case 2:
+			name = parts[0]
+			namespace = parts[1]
+		default:
+			return ""
+		}
+
+		return fmt.Sprintf("%s/%s.%s", kind, name, namespace)
+	} else {
+		return fmt.Sprintf("%s/%s", kind, name)
+	}
+}
+
 func (c *Client) resolve(resource string) ResourceInfo {
 	if resource == "" {
 		panic("empty resource string")
