@@ -36,7 +36,7 @@ func (lw listWatchAdapter) Watch(options v1.ListOptions) (pwatch.Interface, erro
 
 type Watcher struct {
 	client  *Client
-	watches map[string]watch
+	watches map[watchKey]watch
 	mutex   sync.Mutex
 	started bool
 
@@ -44,8 +44,12 @@ type Watcher struct {
 	wg     sync.WaitGroup
 }
 
+type watchKey struct {
+	schema.GroupVersionResource
+	Namespace string
+}
+
 type watch struct {
-	namespace string
 	resource  dynamic.NamespaceableResourceInterface
 	hasSynced cache.InformerSynced
 	store     cache.Store
@@ -57,7 +61,7 @@ type watch struct {
 func NewWatcher(c *Client) *Watcher {
 	w := &Watcher{
 		client:  c,
-		watches: make(map[string]watch),
+		watches: make(map[watchKey]watch),
 		stopCh:  make(chan struct{}),
 	}
 
@@ -70,21 +74,26 @@ func (w *Watcher) Watch(resources string, listener func(*Watcher)) error {
 
 func (w *Watcher) WatchNamespace(namespace, resources string, listener func(*Watcher)) error {
 	ri := w.client.resolve(resources)
-	dyn, err := dynamic.NewForConfig(w.client.config)
+
+	gvr := schema.GroupVersionResource{
+		Group:    ri.Group,
+		Version:  ri.Version,
+		Resource: ri.Name,
+	}
+
+	return w.WatchInternal(gvr, namespace, listener)
+}
+
+func (w *Watcher) WatchInternal(gvr schema.GroupVersionResource, namespace string, listener func(*Watcher)) error {
+	kubeclient, err := dynamic.NewForConfig(w.client.config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	resource := dyn.Resource(schema.GroupVersionResource{
-		Group:    ri.Group,
-		Version:  ri.Version,
-		Resource: ri.Name,
-	})
-	var watched dynamic.ResourceInterface
-	if namespace != "" {
+	resource := kubeclient.Resource(gvr)
+	var watched dynamic.ResourceInterface = resource
+	if namespace == "" {
 		watched = resource.Namespace(namespace)
-	} else {
-		watched = resource
 	}
 
 	var hasSynced cache.InformerSynced
@@ -128,9 +137,7 @@ func (w *Watcher) WatchNamespace(namespace, resources string, listener func(*Wat
 		w.wg.Done()
 	}
 
-	kind := w.client.Canonicalize(ri.Kind)
-	w.watches[kind] = watch{
-		namespace: namespace,
+	w.watches[watchKey{gvr, namespace}] = watch{
 		resource:  resource,
 		hasSynced: informerController.HasSynced,
 		store:     store,
@@ -170,8 +177,19 @@ func (w *Watcher) Start() {
 }
 
 func (w *Watcher) List(kind string) []Resource {
-	kind = w.client.Canonicalize(kind)
-	watch, ok := w.watches[kind]
+	ri := w.client.resolve(w.client.Canonicalize(kind))
+
+	gvr := schema.GroupVersionResource{
+		Group:    ri.Group,
+		Version:  ri.Version,
+		Resource: ri.Name,
+	}
+
+	return w.ListInternal(gvr, "")
+}
+
+func (w *Watcher) ListInternal(gvr schema.GroupVersionResource, namespace string) []Resource {
+	watch, ok := w.watches[watchKey{gvr, namespace}]
 	if ok {
 		objs := watch.store.List()
 		result := make([]Resource, len(objs))
@@ -185,17 +203,21 @@ func (w *Watcher) List(kind string) []Resource {
 }
 
 func (w *Watcher) UpdateStatus(resource Resource) (Resource, error) {
-	kind := w.client.Canonicalize(resource.Kind())
-	if kind == "" {
-		return nil, fmt.Errorf("unknown resource: %v", resource.Kind())
-	}
-	watch, ok := w.watches[kind]
-	if !ok {
-		return nil, fmt.Errorf("no watch: %s", kind)
+	ri := w.client.resolve(w.client.Canonicalize(resource.Kind()))
+
+	gvr := schema.GroupVersionResource{
+		Group:    ri.Group,
+		Version:  ri.Version,
+		Resource: ri.Name,
 	}
 
 	var uns unstructured.Unstructured
 	uns.SetUnstructuredContent(resource)
+
+	watch, ok := w.watches[watchKey{gvr, uns.GetNamespace()}]
+	if !ok {
+		return nil, fmt.Errorf("no watch: %v", gvr)
+	}
 
 	// XXX: should we have an if Namespaced here?
 	result, err := watch.resource.Namespace(uns.GetNamespace()).UpdateStatus(&uns, v1.UpdateOptions{})
