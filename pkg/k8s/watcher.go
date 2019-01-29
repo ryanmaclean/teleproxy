@@ -187,7 +187,7 @@ func (w *Watcher) List(kind string) []Resource {
 func (w *Watcher) UpdateStatus(resource Resource) (Resource, error) {
 	kind := w.client.Canonicalize(resource.Kind())
 	if kind == "" {
-		return nil, fmt.Errorf("unknow resource: %v", resource.Kind())
+		return nil, fmt.Errorf("unknown resource: %v", resource.Kind())
 	}
 	watch, ok := w.watches[kind]
 	if !ok {
